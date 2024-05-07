@@ -1,0 +1,55 @@
+{
+    "name": "dataflow2",
+    "properties": {
+        "folder": {
+            "name": "Test data flow"
+        },
+        "type": "MappingDataFlow",
+        "typeProperties": {
+            "sources": [
+                {
+                    "name": "getDataFromCsvSourceFile"
+                }
+            ],
+            "sinks": [
+                {
+                    "dataset": {
+                        "referenceName": "DS_BLOB_CSV_Output",
+                        "type": "DatasetReference"
+                    },
+                    "name": "createFilewithPivotedData"
+                }
+            ],
+            "transformations": [
+                {
+                    "name": "pivotDataSource"
+                }
+            ],
+            "scriptLines": [
+                "source(output(",
+                "          Id as string,",
+                "          FieldName as string,",
+                "          FieldValue as string",
+                "     ),",
+                "     allowSchemaDrift: false,",
+                "     validateSchema: false) ~> getDataFromCsvSourceFile",
+                "getDataFromCsvSourceFile pivot(groupBy(Id),",
+                "     pivotBy(FieldName),",
+                "     { } = toString(reduce(collect(FieldValue), '', #item, #result)),",
+                "     columnNaming: '$N$V',",
+                "     lateral: false) ~> pivotDataSource",
+                "pivotDataSource sink(allowSchemaDrift: true,",
+                "     validateSchema: false,",
+                "     input(",
+                "          Id as string,",
+                "          FieldName as string,",
+                "          FieldValue as string",
+                "     ),",
+                "     partitionFileNames:['pivotedData.csv'],",
+                "     skipDuplicateMapInputs: true,",
+                "     skipDuplicateMapOutputs: true,",
+                "     partitionBy('hash', 1)) ~> createFilewithPivotedData"
+            ]
+        }
+    }
+}
